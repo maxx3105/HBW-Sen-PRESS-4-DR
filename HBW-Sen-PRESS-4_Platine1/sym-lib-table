@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name "HBW-1W-T10-Platine1-eagle-import")(type "KiCad")(uri "${KIPRJMOD}/HBW-1W-T10-Platine1-eagle-import.kicad_sym")(options "")(descr ""))
+  (lib (name "mini360")(type "Legacy")(uri "C:/Users/marku/Downloads/KiCad-master/KiCad-master/Mini360_step_down_converter/Mini360_lib/mini360.lib")(options "")(descr ""))
+)

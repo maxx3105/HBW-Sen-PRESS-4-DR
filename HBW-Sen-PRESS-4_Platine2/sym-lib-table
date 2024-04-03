@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "HBW-1W-T10-Platine2-eagle-import")(type "KiCad")(uri "${KIPRJMOD}/HBW-1W-T10-Platine2-eagle-import.kicad_sym")(options "")(descr ""))
+)
