@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<device eep_size="1024" version="15">
+<supported_types>
+	<type priority="2" id="HBW-Sen-PRESS" name="RS485 Pressure Sensor Module">
+		<parameter const_value="0x50" size="1" index="0"/><!--HMW_DEVICETYPE-->
+		<parameter const_value="1" size="1" index="1"/><!--HARDWARE_VERSION-->
+		<parameter const_value="0x0004" size="2" cond_op="GE" index="2"/><!--min FIRMWARE_VERSION-->
+	</type>
+</supported_types>
+
+<paramset id="HBW-Sen-PRESS_dev_master" type="MASTER">
+	<parameter id="LOGGING_TIME">
+		<logical type="float" unit="s" default="5.0" max="25.5" min="0.1"/>
+		<physical size="1.0" type="integer" interface="eeprom">
+			<address index="0x0001"/>
+		</physical>
+		<conversion type="float_integer_scale" offset="0.0" factor="10"/>
+	</parameter>
+	<parameter id="CENTRAL_ADDRESS" hidden="true">
+		<logical type="integer"/>
+		<physical size="4" type="integer" interface="eeprom">
+			<address index="0x0002"/>
+		</physical>
+	</parameter>
+	<parameter id="DIRECT_LINK_DEACTIVATE" hidden="true">
+		<logical type="boolean" default="false"/>
+		<physical interface="eeprom" size="0.1" type="integer">
+			<address index="0x0006"/>
+		</physical>
+	</parameter>
+	<!-- Busadresse: letzte 4 EEPROM-Bytes, ATmega328P (E2END 0x3FF) -> 0x03FC -->
+	<parameter id="OWN_ADDRESS">
+		<logical type="integer" default="1" min="1" max="9999999"/>
+		<physical type="integer" size="4" interface="eeprom">
+			<address index="0x03FC"/>
+		</physical>
+		<conversion type="integer_integer_scale" offset="1120000000" factor="1"/>
+	</parameter>
+	<enforce id="CENTRAL_ADDRESS" value="1"/>
+	<enforce id="DIRECT_LINK_DEACTIVATE" value="true"/>
+</paramset>
+
+<!-- Frame-Layout HMW: 4 Byte Ziel + 1 Byte Control + 4 Byte Absender = Index 0..8,
+     danach Nutzdaten: Index 9 = Kommando, Index 10 = Kanal, ab Index 11 = Payload.
+     HBWDevice::sendInfoMessage() sendet 0x69 ('i'), HBWDevice antwortet auf 'S'. -->
+<frames>
+	<frame id="LEVEL_GET" direction="to_device" type="#S" channel_field="10"/>
+	<frame id="INFO_LEVEL" direction="from_device" event="true" type="#i" channel_field="10">
+		<parameter type="integer" index="11.0" size="2.0" param="UNI_PRESSURE"/>
+	</frame>
+</frames>
+
+<channels>
+	<channel index="0" type="MAINTENANCE" count="1" class="maintenance" ui_flags="internal">
+		<paramset id="maint_ch_master" type="MASTER"/>
+		<paramset id="maint_ch_values" type="VALUES">
+			<parameter id="UNREACH" ui_flags="service" operations="read,event">
+				<logical type="boolean"/>
+				<physical type="integer" interface="internal" value_id="UNREACH"/>
+			</parameter>
+			<parameter id="STICKY_UNREACH" ui_flags="service" operations="read,write,event">
+				<logical type="boolean"/>
+				<physical type="integer" interface="internal" value_id="STICKY_UNREACH"/>
+			</parameter>
+			<parameter id="CONFIG_PENDING" ui_flags="service" operations="read,event">
+				<logical type="boolean"/>
+				<physical type="integer" interface="internal" value_id="CONFIG_PENDING"/>
+			</parameter>
+		</paramset>
+	</channel>
+
+	<!-- 4 Drucksensor-Kanaele (A0..A3) - mehr fuehrt das CRMB2-Gehaeuse nicht
+	     heraus. count MUSS zu NUMBER_OF_CHAN im Sketch passen.
+	     Eine dynamische Kanalzahl ueber count_from_sysinfo gibt es hier nicht:
+	     hs485d kennt das Attribut nicht (im Binary weder count_from_sysinfo noch
+	     ein Ersatz; rfd dagegen schon). Ohne count legt die CCU NULL Kanaele an.
+	     Nicht bestueckte Kanaele ueber Sensortyp = NICHT_BELEGT deaktivieren. -->
+	<channel index="1" physical_index_offset="-1" type="GENERIC" count="4">
+		<paramset type="MASTER" id="hbw_press_master" address_start="0x07" address_step="8">
+
+			<!-- Sendeschwelle: Aenderung des Messwerts, ab der gesendet wird -->
+			<parameter id="SEND_DELTA_VALUE">
+				<logical type="float" default="0.1" min="0.0" max="2.54" unit="bar">
+					<special_value id="NOT_USED" value="0"/>
+				</logical>
+				<physical size="1.0" type="integer" interface="eeprom">
+					<address index="+0.0"/>
+				</physical>
+				<conversion type="float_integer_scale" factor="100"/>
+				<conversion type="integer_integer_map">
+					<value_map to_device="false" from_device="true" parameter_value="10" device_value="0xff"/>
+				</conversion>
+			</parameter>
+
+			<!-- Kalibrier-Offset, vorzeichenbehaftet ueber Bias 127:
+			     device = (param + 1.27) * 100  ->  -1.27 bar = 0, 0.00 bar = 127, +1.27 bar = 254.
+			     0xFF (leeres EEPROM) liegt ausserhalb und wird als 0 interpretiert. -->
+			<parameter id="OFFSET">
+				<logical type="float" default="0.0" min="-1.27" max="1.27" unit="bar"/>
+				<physical size="1.0" type="integer" interface="eeprom">
+					<address index="+1.0"/>
+				</physical>
+				<conversion type="float_integer_scale" offset="1.27" factor="100"/>
+				<conversion type="integer_integer_map">
+					<value_map to_device="false" from_device="true" parameter_value="0" device_value="0xff"/>
+				</conversion>
+			</parameter>
+
+			<!-- Maximal-Sendeintervall: spaetestens nach X Sekunden senden -->
+			<parameter id="SEND_MAX_INTERVAL">
+				<logical type="integer" unit="s" default="600" min="10" max="3600">
+					<special_value id="NOT_USED" value="0"/>
+				</logical>
+				<physical size="2.0" type="integer" interface="eeprom" endian="little">
+					<address index="+2.0"/>
+				</physical>
+				<conversion type="integer_integer_map">
+					<value_map to_device="false" from_device="true" parameter_value="600" device_value="0xffff"/>
+				</conversion>
+			</parameter>
+
+			<!-- Minimal-Sendeintervall: nicht oefter als alle X Sekunden senden -->
+			<parameter id="SEND_MIN_INTERVAL">
+				<logical type="integer" unit="s" default="30" min="10" max="3600">
+					<special_value id="NOT_USED" value="0"/>
+				</logical>
+				<physical size="2.0" type="integer" interface="eeprom" endian="little">
+					<address index="+4.0"/>
+				</physical>
+				<conversion type="integer_integer_map">
+					<value_map to_device="false" from_device="true" parameter_value="30" device_value="0xffff"/>
+				</conversion>
+			</parameter>
+
+			<!-- Messintervall: Abstand zwischen zwei Messreihen -->
+			<parameter id="UPDATE_INTERVAL">
+				<logical type="integer" default="30" min="1" max="254" unit="s"/>
+				<physical size="1.0" type="integer" interface="eeprom">
+					<address index="+6.0"/>
+				</physical>
+				<conversion type="integer_integer_map">
+					<value_map to_device="false" from_device="true" parameter_value="30" device_value="0xff"/>
+				</conversion>
+			</parameter>
+
+			<!-- Sensortyp / Kanal-Freigabe -->
+			<parameter id="Sensortyp">
+				<logical type="option">
+					<option id="NICHT_BELEGT" default="true"/>  <!-- 0: Kanal aus -->
+					<option id="1.2MPa"/>                        <!-- 1: 1.2 MPa (0-12 bar) -->
+					<option id="0.5MPa"/>                        <!-- 2: 0.5 MPa (0-5 bar) -->
+				</logical>
+				<physical size="1.0" type="integer" interface="eeprom">
+					<address index="+7.0"/>
+				</physical>
+			</parameter>
+
+		</paramset>
+
+		<paramset type="VALUES" id="hbw_press_values">
+			<parameter id="UNI_PRESSURE" operations="read,event">
+				<logical type="float" min="0.0" max="20.0" unit="bar"/>
+				<physical type="integer" interface="command" value_id="UNI_PRESSURE">
+					<get request="LEVEL_GET" response="INFO_LEVEL"/>
+					<event frame="INFO_LEVEL"/>
+				</physical>
+				<conversion type="float_integer_scale" factor="100"/>
+			</parameter>
+		</paramset>
+	</channel>
+</channels>
+</device>

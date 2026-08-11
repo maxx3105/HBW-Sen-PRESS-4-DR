@@ -1,0 +1,7 @@
+# Archiv des v0.02-Standes, die Historie steht in BUGFIXES.md
+files.zip
+
+# Build-Artefakte (arduino-cli baut normalerweise ausserhalb, sicherheitshalber)
+build/
+*.elf
+*.lst
