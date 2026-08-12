@@ -6,16 +6,7 @@ HomeMatic-Wired-Drucksensormodul für Hutschienenmontage
 
 HomeMatic-Wired-Gerät (RS485) zur Überwachung hydraulischer Drücke mit
 Industrie-Drucksensoren. Es stellt 4 analoge Sensoreingänge bereit (A0–A3).
-Die Platine führt zwar 8 ADC-Pins, das CRMB2-Gehäuse gibt aber nur 4
-Sensoranschlüsse heraus. Nicht belegte Kanäle werden in der CCU über
-`Sensortyp = NICHT_BELEGT` abgeschaltet.
-
-`NUMBER_OF_CHAN` im Sketch und `count` in der XML **müssen** übereinstimmen.
-Eine dynamische Kanalzahl über `count_from_sysinfo` gibt es im Wired-Zweig
-nicht: `hs485d` implementiert das Attribut nicht (im Binary weder
-`count_from_sysinfo` noch ein Äquivalent, `rfd` dagegen schon). Ohne `count`
-legt die CCU null Kanäle an. Mehr Kanäle bräuchten einen zweiten Gerätetyp mit
-eigenem Typ-Byte, wie bei `HBW-LC-RGBWW-3` / `-6`.
+Nicht belegte Kanäle werden in der CCU über `Sensortyp = NICHT_BELEGT` abgeschaltet.
 
 ### Basiert auf:
 - **HBWired** von Thorsten Pferdekaemper: https://github.com/ThorstenPferdekaemper/HBWired
@@ -47,11 +38,10 @@ Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
 - 4,5 V = Endwert (5 bzw. 12 bar je nach Sensortyp)
 
 ### Bauteile
-- **ATmega328P-A** Mikrocontroller (alternativ Arduino Nano)
+- **ATmega328P** Mikrocontroller (alternativ Arduino Nano)
 - **MAX487E** RS485-Transceiver
 - **MC34063AD** Step-Down-Wandler (24 V Bus → 5 V)
-- Analogeingänge: A0–A3 in Verwendung (die Platine führt A0–A7, das
-  CRMB2-Gehäuse gibt nur 4 heraus)
+- Analogeingänge: A0–A3 in Verwendung
 
 ### Merkmale der Platine
 - Hutschienenmontage
@@ -65,10 +55,8 @@ Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
 
 | Pin | Funktion |
 |-----|----------|
-| A0–A3 | Analogeingänge der Drucksensoren (A4–A7 auf der Platine vorhanden, ungenutzt) |
-| D2 | RS485 TX (bzw. TXD bei SoftwareSerial) |
+| A0–A3 | Analogeingänge der Drucksensoren |
 | D3 | RS485 TXEN |
-| D4 | RS485 RX (nur bei SoftwareSerial) |
 | D8 | Taster für Werksreset |
 | D13 | Status-LED |
 
@@ -124,7 +112,6 @@ Der Sketch liegt im Unterordner `HBW-Sen-PRESS-DR/` (der Ordnername muss dem
 
 - `HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` in der Arduino-IDE öffnen
 - Board: **Arduino Nano** (ATmega328P)
-- Für Debug: `USE_HARDWARE_SERIAL` auskommentiert lassen
 - Für den Produktivbetrieb: `#define USE_HARDWARE_SERIAL` aktivieren
 - Flashen über ISP oder Bootloader
 
@@ -136,19 +123,13 @@ arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 --upload --programmer 
 ```
 
 Hinweis: Ist die EESAVE-Fuse nicht gesetzt, löscht jeder ISP-Flash das EEPROM —
-und damit die Busadresse. Prüfen mit
-`avrdude -c usbasp -p m328p -U hfuse:r:-:h` (Bit 3 gesetzt, z. B. `0xDA`,
-bedeutet: EEPROM wird gelöscht).
+und damit die Busadresse.
 
 ### 3. CCU/RaspberryMatic einrichten
 1. `hbw-sen-press-dr.xml` auf die CCU kopieren
 2. Gerätedefinition einbinden (Addon bzw. FHEM)
 3. Gerät an den RS485-Bus anschließen
 4. Anlernen und aus dem Posteingang übernehmen
-
-Wird eine bereits installierte XML ersetzt: alte XML löschen → Neustart → neue
-XML einspielen → Neustart → Gerät löschen und neu anlernen. Ändert sich die
-Kanalstruktur, reicht ein Übernehmen nicht, das steckt in der regadom-Datenbank.
 
 ## EEPROM-Belegung
 
@@ -193,36 +174,10 @@ sonst bricht der Build.
   VCC-Referenz des ADC benutzt und nicht die interne 1,1-V-Referenz.
   Wichtig ist nur, dass Sensor und MCU aus **derselben** Schiene versorgt werden.
 
-### CCU zeigt das Gerät, aber keinen Messwert
-- Ist die aktuelle XML installiert? Gerätetyp `0x50`, Frame `INFO_LEVEL` als
-  `type="#i" channel_field="10"`, Nutzdaten ab Index `11.0`
-- Nach dem Austausch der XML: löschen, Neustart, neue XML, Neustart, Gerät neu
-  anlernen
 
 ### Gerät kommuniziert nicht
 - RS485-Verdrahtung prüfen (A/B nicht vertauscht)
-- Busabschluss vorhanden (120 Ω an beiden Enden)?
 - TX/RX-Aktivität beobachten
-- Im Debug-Modus mitlesen (serieller Monitor, 115200 Baud)
-
-## Debug-Modus
-
-Bleibt `//#define USE_HARDWARE_SERIAL` auskommentiert, läuft RS485 über
-SoftwareSerial und die Debug-Ausgabe über USB:
-
-```
-HBW-Sen-PRESS-DR v4
-Free RAM: 1093 bytes
-Channels: 4
-ADC Ch0: 329 (1606 mV)
-ADC Ch1: 291 (1420 mV)
-ADC Ch2: 264 (1289 mV)
-ADC Ch3: 268 (1308 mV)
-=== Setup complete ===
-```
-
-Der ATmega328P hat nur einen UART: entweder Bus über die Hardware-UART **oder**
-Debug über USB, nie beides gleichzeitig.
 
 ## Lizenz
 
@@ -234,48 +189,9 @@ http://creativecommons.org/licenses/by-nc-sa/3.0/at/
 - Thorsten Pferdekaemper – HBWired-Framework
 - Dirk Hoffmann – Beiträge zu HBWired
 - jp112sdl – ursprüngliches Konzept HB-UNI-Sen-PRESS
-- maxx3105 – Umsetzung HBW-Sen-PRESS-DR
 
 ## Änderungsverlauf
 
-### v0.04
-- Kanalzahl 8 → 4, passend zu dem, was das CRMB2-Gehäuse herausführt
-- Am Bus bestätigt, dass `count_from_sysinfo` im Wired-Zweig nicht nutzbar ist:
-  `hs485d` wertet die übrige XML aus (Gerätetyp, Firmware, Geräteparameter),
-  legt ohne `count` aber **null** Kanäle an
-
-### v0.03
-- **XML gegen das HMW-Frame-Layout neu aufgebaut.** Der `<frames>`-Block war
-  noch AskSin-/Funk-Syntax aus HB-UNI-Sen-PRESS (`type="0x53"`,
-  `channel_field="11"`, Nutzdaten bei `12.0`). HBWired sendet `0x69` ('i') mit
-  dem Kanal in Byte 10 und den Nutzdaten ab Byte 11 — die CCU hätte die
-  Info-Nachrichten nie dem Datenpunkt zuordnen können.
-- `Sensortyp` von `interface="config" list="1"` (Funk) auf `interface="eeprom"`
-  umgestellt — hs485d hätte dieses Byte nie geschrieben, jeder Kanal wäre
-  dauerhaft abgeschaltet geblieben.
-- `LEVEL_GET`-Frame (`#S`) und `<get>` ergänzt, damit die CCU den Wert abfragen
-  kann; HBWired beantwortet 'S' bereits.
-- `count_from_sysinfo` durch festes `count` ersetzt; das Kanalzahl-Byte an 0x17
-  und sein Padding entfallen, die Kanalkonfiguration beginnt jetzt bei 0x07.
-- `OWN_ADDRESS` an 0x03FC ergänzt (E2END−3 des 1-kB-EEPROMs im 328P).
-- Blockierendes `delay(2)` aus der ADC-Schleife entfernt — 8 ms je Messung
-  reichten aus, um auf SoftwareSerial RS485-Frames zu verlieren.
-- Rückgabewert von `sendInfoMessage()` wird ausgewertet; bei `BUS_BUSY` gilt der
-  Messwert nicht mehr als gesendet.
-- Sendelogik vom Messzyklus entkoppelt.
-- OFFSET mit Bias 127 gespeichert, damit −0,01 bar nicht mehr mit der Markierung
-  für gelöschtes EEPROM (0xFF) kollidiert.
-- EEPROM-Belegung durch `static_assert` abgesichert.
-
-### v0.02 (06.04.2024)
-- Doppelte Kanal-Initialisierung behoben
-- EEPROM-Adressierung korrigiert (address_step = 8)
-- OFFSET im Code umgesetzt
-- Timing-Fehler bei send_min_interval behoben
-- send_min_interval auf 16 Bit erweitert (war 8 Bit)
-- Debug-Ausgabe erweitert
-
 ### v0.01 (02.04.2024)
 - Erste Fassung auf Basis von HB-UNI-Sen-PRESS
-- Grundlegende Druckmessung
 - CCU-Anbindung über XML
