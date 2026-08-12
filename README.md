@@ -1,258 +1,281 @@
 # HBW-Sen-PRESS-DR
 
-HomeMatic Wired Pressure Sensor Module for DIN Rail mounting
+HomeMatic-Wired-Drucksensormodul für Hutschienenmontage
 
-## Overview
+## Überblick
 
-This is a HomeMatic Wired (RS485) device for monitoring hydraulic pressure using industrial pressure sensors. It provides 4 analog pressure sensor inputs (A0–A3). The PCB carries 8 ADC pins, but the CRMB2 enclosure only exposes 4 sensor connections. Channels that are not populated are switched off in the CCU via `Sensortyp = NICHT_BELEGT`.
+HomeMatic-Wired-Gerät (RS485) zur Überwachung hydraulischer Drücke mit
+Industrie-Drucksensoren. Es stellt 4 analoge Sensoreingänge bereit (A0–A3).
+Die Platine führt zwar 8 ADC-Pins, das CRMB2-Gehäuse gibt aber nur 4
+Sensoranschlüsse heraus. Nicht belegte Kanäle werden in der CCU über
+`Sensortyp = NICHT_BELEGT` abgeschaltet.
 
-`NUMBER_OF_CHAN` in the sketch and `count` in the XML **must** match. A dynamic
-channel count via `count_from_sysinfo` does not exist on the wired side —
-`hs485d` does not implement the attribute (verified in the binary: neither
-`count_from_sysinfo` nor any equivalent, while `rfd` has it). Without `count`
-the CCU creates zero channels. More channels would require a second device type
-with its own type byte, as done for `HBW-LC-RGBWW-3` / `-6`.
+`NUMBER_OF_CHAN` im Sketch und `count` in der XML **müssen** übereinstimmen.
+Eine dynamische Kanalzahl über `count_from_sysinfo` gibt es im Wired-Zweig
+nicht: `hs485d` implementiert das Attribut nicht (im Binary weder
+`count_from_sysinfo` noch ein Äquivalent, `rfd` dagegen schon). Ohne `count`
+legt die CCU null Kanäle an. Mehr Kanäle bräuchten einen zweiten Gerätetyp mit
+eigenem Typ-Byte, wie bei `HBW-LC-RGBWW-3` / `-6`.
 
-### Based on:
-- **HBWired** by Thorsten Pferdekaemper: https://github.com/ThorstenPferdekaemper/HBWired
-- **HB-UNI-Sen-PRESS** by jp112sdl: https://github.com/jp112sdl/HB-UNI-Sen-PRESS
+### Basiert auf:
+- **HBWired** von Thorsten Pferdekaemper: https://github.com/ThorstenPferdekaemper/HBWired
+- **HB-UNI-Sen-PRESS** von jp112sdl: https://github.com/jp112sdl/HB-UNI-Sen-PRESS
 
-## Repository layout
+## Aufbau des Repositories
 
 ```
 HBW-Sen-PRESS/
-├── HBW-Sen-PRESS-DR/            Arduino sketch (folder name must match the .ino)
+├── HBW-Sen-PRESS-DR/            Arduino-Sketch (Ordnername muss zur .ino passen)
 │   ├── HBW-Sen-PRESS-DR.ino
 │   ├── HBWAnalogPRESS.h
 │   └── HBWAnalogPRESS.cpp
-├── hbw-sen-press-dr.xml         CCU device definition (hs485types)
-├── HBW-Sen-PRESS-4_Platine1/    KiCad project, PCB revision 1 (+ Gerber)
-├── HBW-Sen-PRESS-4_Platine2/    KiCad project, PCB revision 2 (+ Gerber)
-├── BUGFIXES.md                  what was broken in v0.01–v0.03 and why
-└── CLAUDE.md                    compact project status / handover notes
+├── hbw-sen-press-dr.xml         CCU-Gerätedefinition (hs485types)
+├── HBW-Sen-PRESS-4_Platine1/    KiCad-Projekt Hauptplatine (+ Gerber)
+├── HBW-Sen-PRESS-4_Platine2/    KiCad-Projekt zweite Platine (+ Gerber)
+├── BUGFIXES.md                  was in v0.01–v0.03 defekt war und warum
+└── CLAUDE.md                    kompakter Projektstand / Übergabenotizen
 ```
 
 ## Hardware
 
-### Supported Sensors
-- **0.5 MPa** hydraulic pressure sensor (0-5 bar / 0-72.5 PSI)
-- **1.2 MPa** hydraulic pressure sensor (0-12 bar / 0-174 PSI)
+### Unterstützte Sensoren
+- **0,5 MPa** Hydraulik-Drucksensor (0–5 bar / 0–72,5 PSI)
+- **1,2 MPa** Hydraulik-Drucksensor (0–12 bar / 0–174 PSI)
 
-Both sensors output: **0.5V - 4.5V** analog signal
-- 0.5V = 0 bar (minimum pressure)
-- 4.5V = max pressure (5 or 12 bar depending on sensor type)
+Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
+- 0,5 V = 0 bar
+- 4,5 V = Endwert (5 bzw. 12 bar je nach Sensortyp)
 
-### Components
-- **ATmega328P-A** microcontroller (or Arduino Nano)
-- **MAX487E** RS485 transceiver
-- **MC34063AD** step-down converter (24V bus → 5V)
-- Analog inputs: A0-A3 in use (the PCB routes A0-A7, but the CRMB2 enclosure exposes only 4)
+### Bauteile
+- **ATmega328P-A** Mikrocontroller (alternativ Arduino Nano)
+- **MAX487E** RS485-Transceiver
+- **MC34063AD** Step-Down-Wandler (24 V Bus → 5 V)
+- Analogeingänge: A0–A3 in Verwendung (die Platine führt A0–A7, das
+  CRMB2-Gehäuse gibt nur 4 heraus)
 
-### PCB Features
-- DIN rail mounting
-- RS485 bus connection (A, B, GND, +24V)
-- Screw terminals for sensor connections
-- ISP programming header
-- Status LED
-- Factory reset button
+### Merkmale der Platine
+- Hutschienenmontage
+- RS485-Busanschluss (A, B, GND, +24 V)
+- Schraubklemmen für die Sensoren
+- ISP-Programmierstecker
+- Status-LED
+- Taster für Werksreset
 
-## Pin Configuration
+## Pinbelegung
 
-| Pin | Function |
+| Pin | Funktion |
 |-----|----------|
-| A0-A3 | Pressure sensor analog inputs (A4-A7 present on PCB, unused) |
-| D2 | RS485 TX (or TXD for software serial) |
+| A0–A3 | Analogeingänge der Drucksensoren (A4–A7 auf der Platine vorhanden, ungenutzt) |
+| D2 | RS485 TX (bzw. TXD bei SoftwareSerial) |
 | D3 | RS485 TXEN |
-| D4 | RS485 RX (software serial only) |
-| D8 | Factory reset button |
-| D13 | Status LED |
+| D4 | RS485 RX (nur bei SoftwareSerial) |
+| D8 | Taster für Werksreset |
+| D13 | Status-LED |
 
-## Software Features
+## Funktionsumfang
 
-### Per-Channel Configuration (in CCU/FHEM)
+### Konfiguration je Kanal (in CCU/FHEM)
 
-| Parameter | Range | Default | Description |
-|-----------|-------|---------|-------------|
-| **Sensortyp** | 0.5MPa / 1.2MPa / NICHT_BELEGT | NICHT_BELEGT | Select sensor type or disable channel |
-| **SEND_DELTA_VALUE** | 0.0-2.54 bar | 0.1 bar | Send update when pressure changes by this amount |
-| **OFFSET** | -1.27 to +1.27 bar | 0.0 bar | Calibration offset (signed, stored with bias 127) |
-| **UPDATE_INTERVAL** | 1-254 sec | 30 sec | Pause between measurement cycles |
-| **SEND_MIN_INTERVAL** | 10-3600 sec | 30 sec | Minimum time between transmissions |
-| **SEND_MAX_INTERVAL** | 10-3600 sec | 600 sec | Maximum time between transmissions (force send) |
+| Parameter | Bereich | Vorgabe | Bedeutung |
+|-----------|---------|---------|-----------|
+| **Sensortyp** | 0.5MPa / 1.2MPa / NICHT_BELEGT | NICHT_BELEGT | Sensortyp wählen oder Kanal abschalten |
+| **SEND_DELTA_VALUE** | 0,0–2,54 bar | 0,1 bar | Sendet, sobald sich der Druck um diesen Betrag ändert |
+| **OFFSET** | −1,27 bis +1,27 bar | 0,0 bar | Kalibrier-Offset (vorzeichenbehaftet, mit Bias 127 gespeichert) |
+| **UPDATE_INTERVAL** | 1–254 s | 30 s | Pause zwischen zwei Messreihen |
+| **SEND_MIN_INTERVAL** | 10–3600 s | 30 s | Mindestabstand zwischen zwei Sendungen |
+| **SEND_MAX_INTERVAL** | 10–3600 s | 600 s | Spätestens nach dieser Zeit wird gesendet |
 
-The upper limits avoid the all-ones value (`0xFF` / `0xFFFF`), which marks an
-erased EEPROM cell and is mapped to the default instead.
+Die Obergrenzen vermeiden den Wert aus lauter Einsen (`0xFF` / `0xFFFF`) — der
+markiert eine gelöschte EEPROM-Zelle und wird stattdessen auf die Vorgabe
+abgebildet.
 
-### Logic Flow
+### Ablauf
 
-1. **Measurement**: one ADC sample every SAMPLE_INTERVAL (3 s), averaged over
-   MAX_SAMPLES (4) — no blocking `delay()`, so the RS485 receive path stays
-   responsive. After a complete reading the channel pauses for UPDATE_INTERVAL.
-2. **Conversion**: ADC → Voltage → Pressure (based on sensor type)
-3. **Calibration**: Apply OFFSET
-4. **Transmission decision** (evaluated every loop pass, independent of the
-   measurement cycle):
-   - Wait at least SEND_MIN_INTERVAL since last send
-   - Send if pressure changed by ≥ SEND_DELTA_VALUE
-   - Force send after SEND_MAX_INTERVAL regardless of change
-   - On `BUS_BUSY` the value is kept pending instead of being discarded
+1. **Messung**: alle SAMPLE_INTERVAL (3 s) ein ADC-Wert, gemittelt über
+   MAX_SAMPLES (4) — ohne blockierendes `delay()`, damit der RS485-Empfang
+   reaktionsfähig bleibt. Nach einer vollständigen Messreihe pausiert der Kanal
+   für UPDATE_INTERVAL.
+2. **Umrechnung**: ADC → Spannung → Druck (abhängig vom Sensortyp)
+3. **Kalibrierung**: OFFSET anwenden
+4. **Sendeentscheidung** (in jedem Schleifendurchlauf geprüft, unabhängig vom
+   Messzyklus):
+   - Mindestens SEND_MIN_INTERVAL seit der letzten Sendung abwarten
+   - Senden, wenn sich der Druck um ≥ SEND_DELTA_VALUE geändert hat
+   - Nach SEND_MAX_INTERVAL in jedem Fall senden
+   - Bei `BUS_BUSY` bleibt der Messwert offen, statt als gesendet zu gelten
+
+Ein vollständiger Messwert entsteht damit alle
+`(MAX_SAMPLES − 1) × SAMPLE_INTERVAL + UPDATE_INTERVAL` Sekunden, mit den
+Vorgabewerten also alle 39 s. `UPDATE_INTERVAL` ist die Pause *zwischen* den
+Messreihen, nicht die Messrate — auf 1 s gestellt misst das Gerät alle 10 s.
 
 ## Installation
 
-### 1. Arduino IDE Setup
+### 1. Arduino-IDE vorbereiten
 ```bash
-# Install HBWired library
 git clone https://github.com/ThorstenPferdekaemper/HBWired
-# Copy to Arduino/libraries/HBWired
+# nach Arduino/libraries/HBWired kopieren
 ```
 
-### 2. Compile & Upload
+### 2. Übersetzen und flashen
 
-The sketch lives in the `HBW-Sen-PRESS-DR/` subfolder (folder name must match
-the `.ino` name).
+Der Sketch liegt im Unterordner `HBW-Sen-PRESS-DR/` (der Ordnername muss dem
+`.ino`-Namen entsprechen).
 
-- Open `HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` in Arduino IDE
-- Select board: **Arduino Nano** (ATmega328P)
-- For debug: Leave `USE_HARDWARE_SERIAL` commented out
-- For production: Uncomment `#define USE_HARDWARE_SERIAL`
-- Upload via ISP or bootloader
+- `HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` in der Arduino-IDE öffnen
+- Board: **Arduino Nano** (ATmega328P)
+- Für Debug: `USE_HARDWARE_SERIAL` auskommentiert lassen
+- Für den Produktivbetrieb: `#define USE_HARDWARE_SERIAL` aktivieren
+- Flashen über ISP oder Bootloader
 
-Or from the project root:
+Oder aus dem Projektverzeichnis heraus:
 
 ```
 arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 HBW-Sen-PRESS-DR
 arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 --upload --programmer usbasp HBW-Sen-PRESS-DR
 ```
 
-### 3. CCU/RaspberryMatic Setup
-1. Copy `hbw-sen-press-dr.xml` to CCU
-2. Import device definition in FHEM or install as addon
-3. Connect device to RS485 bus
-4. Press reset button for 3 seconds to enter pairing mode
-5. Add device in CCU interface
+Hinweis: Ist die EESAVE-Fuse nicht gesetzt, löscht jeder ISP-Flash das EEPROM —
+und damit die Busadresse. Prüfen mit
+`avrdude -c usbasp -p m328p -U hfuse:r:-:h` (Bit 3 gesetzt, z. B. `0xDA`,
+bedeutet: EEPROM wird gelöscht).
 
-## EEPROM Memory Map
+### 3. CCU/RaspberryMatic einrichten
+1. `hbw-sen-press-dr.xml` auf die CCU kopieren
+2. Gerätedefinition einbinden (Addon bzw. FHEM)
+3. Gerät an den RS485-Bus anschließen
+4. Anlernen und aus dem Posteingang übernehmen
 
-`HBWDevice` reads the config struct starting at EEPROM address `0x01`
-(see `readConfig()` in HBWired.cpp), so struct offset 6 lands on `0x07`.
+Wird eine bereits installierte XML ersetzt: alte XML löschen → Neustart → neue
+XML einspielen → Neustart → Gerät löschen und neu anlernen. Ändert sich die
+Kanalstruktur, reicht ein Übernehmen nicht, das steckt in der regadom-Datenbank.
+
+## EEPROM-Belegung
+
+`HBWDevice` liest die Konfigurationsstruktur ab EEPROM-Adresse `0x01`
+(siehe `readConfig()` in HBWired.cpp), Struktur-Offset 6 landet also auf `0x07`.
 
 ```
-0x00      : Device type (0x50)
-0x01      : Logging time
-0x02-0x05 : Central address
-0x06      : Direct link deactivate flag
-0x07      : Channel 1 config start (8 bytes)
+0x00      : Gerätetyp (0x50)
+0x01      : Logging-Zeit
+0x02-0x05 : Zentralen-Adresse
+0x06      : Direct-Link-Flag
+0x07      : Kanal 1, Konfiguration (8 Byte)
   +0: send_delta_value
-  +1: offset (bias 127: 0 = -1.27 bar, 127 = 0.00 bar, 254 = +1.27 bar)
-  +2-3: send_max_interval (16-bit little endian)
-  +4-5: send_min_interval (16-bit little endian)
+  +1: offset (Bias 127: 0 = −1,27 bar, 127 = 0,00 bar, 254 = +1,27 bar)
+  +2-3: send_max_interval (16 Bit, little endian)
+  +4-5: send_min_interval (16 Bit, little endian)
   +6: update_interval
   +7: pressure_sensor_type
-0x0F/0x17/0x1F : Channel 2..4 config start
-0x3FC-0x3FF : OWN_ADDRESS (bus address, E2END-3 for the 1 kB EEPROM of the 328P)
+0x0F/0x17/0x1F : Kanal 2..4, Konfiguration
+0x3FC-0x3FF : OWN_ADDRESS (Busadresse, E2END−3 beim 1-kB-EEPROM des 328P)
 ```
 
-The layout is enforced at compile time by three `static_assert` in
-`HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` — struct size, channel start offset and the distance to
-`OWN_ADDRESS` must match the XML.
+Die Belegung ist über drei `static_assert` in
+`HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` an die XML gekoppelt — Strukturgröße,
+Startoffset der Kanäle und der Abstand zu `OWN_ADDRESS` müssen passen,
+sonst bricht der Build.
 
-## Troubleshooting
+## Fehlersuche
 
-### No readings / all zeros
-- Check sensor wiring (3-wire: VCC, GND, Signal)
-- Verify sensor is outputting 0.5-4.5V
-- Check if channel is enabled (Sensortyp != "Disabled")
+### Keine Messwerte / alles null
+- Verdrahtung prüfen (3-adrig: VCC, GND, Signal)
+- Liefert der Sensor tatsächlich 0,5–4,5 V?
+- Ist der Kanal freigegeben (`Sensortyp` ≠ `NICHT_BELEGT`)? Bei abgeschaltetem
+  Kanal wird weder gemessen noch gesendet.
 
-### Wrong pressure values
-- Verify correct sensor type selected (0.5 MPa vs 1.2 MPa)
-- Use OFFSET parameter for calibration
-- VCC does *not* need to be exactly 5.0 V: these sensors are ratiometric, their
-  output scales with their supply. As long as sensor and ADC share the same 5 V
-  rail, the regulator's deviation cancels out — which is why the default (VCC)
-  ADC reference is used and not the internal 1.1 V reference. What does matter
-  is that sensor and MCU are supplied from the *same* rail.
+### Falsche Druckwerte
+- Richtigen Sensortyp gewählt (0,5 MPa vs. 1,2 MPa)?
+- Zur Kalibrierung den Parameter OFFSET verwenden
+- VCC muss *nicht* exakt 5,0 V betragen: Die Sensoren arbeiten ratiometrisch,
+  ihr Ausgang skaliert mit der Versorgung. Hängen Sensor und ADC an derselben
+  5-V-Schiene, hebt sich die Abweichung des Reglers auf — deshalb wird die
+  VCC-Referenz des ADC benutzt und nicht die interne 1,1-V-Referenz.
+  Wichtig ist nur, dass Sensor und MCU aus **derselben** Schiene versorgt werden.
 
-### CCU shows the device but no pressure value
-- Check the XML is the current one (v0.03+): device type `0x50`, frame
-  `INFO_LEVEL` as `type="#i" channel_field="10"`, payload at index `11.0`
-- After replacing the XML: delete it, restart, install the new one, restart,
-  then re-adopt the device from the inbox
+### CCU zeigt das Gerät, aber keinen Messwert
+- Ist die aktuelle XML installiert? Gerätetyp `0x50`, Frame `INFO_LEVEL` als
+  `type="#i" channel_field="10"`, Nutzdaten ab Index `11.0`
+- Nach dem Austausch der XML: löschen, Neustart, neue XML, Neustart, Gerät neu
+  anlernen
 
-### Device not communicating
-- Check RS485 wiring (A, B correct polarity)
-- Verify bus termination (120Ω resistors at both ends)
-- Check TX/RX LED activity
-- Test with DEBUG mode enabled (Serial monitor at 115200 baud)
+### Gerät kommuniziert nicht
+- RS485-Verdrahtung prüfen (A/B nicht vertauscht)
+- Busabschluss vorhanden (120 Ω an beiden Enden)?
+- TX/RX-Aktivität beobachten
+- Im Debug-Modus mitlesen (serieller Monitor, 115200 Baud)
 
-## Debug Mode
+## Debug-Modus
 
-Uncomment `//#define USE_HARDWARE_SERIAL` to enable debug output via USB:
+Bleibt `//#define USE_HARDWARE_SERIAL` auskommentiert, läuft RS485 über
+SoftwareSerial und die Debug-Ausgabe über USB:
 
 ```
-HBW-Sen-PRESS-DR v2
-Free RAM: 1234 bytes
+HBW-Sen-PRESS-DR v4
+Free RAM: 1093 bytes
 Channels: 4
-ADC Ch0: 512 (2500 mV)
-ADC Ch1: 102 (500 mV)
-ADC Ch2: 920 (4500 mV)
-ADC Ch3: 0 (0 mV)
+ADC Ch0: 329 (1606 mV)
+ADC Ch1: 291 (1420 mV)
+ADC Ch2: 264 (1289 mV)
+ADC Ch3: 268 (1308 mV)
 === Setup complete ===
 ```
 
-## License
+Der ATmega328P hat nur einen UART: entweder Bus über die Hardware-UART **oder**
+Debug über USB, nie beides gleichzeitig.
+
+## Lizenz
 
 Creative Commons BY-NC-SA 3.0 AT
 http://creativecommons.org/licenses/by-nc-sa/3.0/at/
 
-## Credits
+## Dank an
 
-- Thorsten Pferdekaemper - HBWired framework
-- Dirk Hoffmann - HBWired contributions
-- jp112sdl - Original HB-UNI-Sen-PRESS concept
-- maxx3105 - HBW-Sen-PRESS-DR implementation
+- Thorsten Pferdekaemper – HBWired-Framework
+- Dirk Hoffmann – Beiträge zu HBWired
+- jp112sdl – ursprüngliches Konzept HB-UNI-Sen-PRESS
+- maxx3105 – Umsetzung HBW-Sen-PRESS-DR
 
-## Changelog
+## Änderungsverlauf
 
 ### v0.04
-- Channel count 8 → 4, matching what the CRMB2 enclosure exposes
-- Confirmed at the bus that `count_from_sysinfo` is not usable on wired:
-  `hs485d` parses the rest of the XML (device type, firmware, device
-  parameters) but creates **zero** channels without a `count` attribute
+- Kanalzahl 8 → 4, passend zu dem, was das CRMB2-Gehäuse herausführt
+- Am Bus bestätigt, dass `count_from_sysinfo` im Wired-Zweig nicht nutzbar ist:
+  `hs485d` wertet die übrige XML aus (Gerätetyp, Firmware, Geräteparameter),
+  legt ohne `count` aber **null** Kanäle an
 
 ### v0.03
-- **XML rebuilt against the HMW frame layout.** The `<frames>` block was still
-  AskSin/radio syntax inherited from HB-UNI-Sen-PRESS (`type="0x53"`,
-  `channel_field="11"`, payload at `12.0`). HBWired sends `0x69` ('i') with the
-  channel in byte 10 and the payload from byte 11 — the CCU could never have
-  matched the info messages to the datapoint.
-- `Sensortyp` moved from `interface="config" list="1"` (radio) to
-  `interface="eeprom"` — hs485d would never have written that byte, leaving
-  every channel permanently disabled.
-- Added `LEVEL_GET` frame (`#S`) and `<get>` so the CCU can poll the value;
-  HBWired already answers 'S'.
-- Replaced `count_from_sysinfo` (radio-only, and 3 bits cannot hold 8) with a
-  fixed `count="8"`; the channel-count byte at 0x17 and its padding are gone,
-  channel configs now start at 0x07.
-- Added `OWN_ADDRESS` at 0x03FC (E2END-3 of the 328P's 1 kB EEPROM).
-- Removed the blocking `delay(2)` from the ADC sampling loop — 8 ms per
-  measurement was enough to drop RS485 frames on SoftwareSerial.
-- `sendInfoMessage()` return code is evaluated; on `BUS_BUSY` the reading is no
-  longer treated as sent.
-- Send logic decoupled from the measurement cycle.
-- OFFSET now stored with bias 127, so -0.01 bar no longer collides with the
-  "erased EEPROM" marker 0xFF.
-- Channel count 4 → 8; EEPROM layout guarded by `static_assert`.
+- **XML gegen das HMW-Frame-Layout neu aufgebaut.** Der `<frames>`-Block war
+  noch AskSin-/Funk-Syntax aus HB-UNI-Sen-PRESS (`type="0x53"`,
+  `channel_field="11"`, Nutzdaten bei `12.0`). HBWired sendet `0x69` ('i') mit
+  dem Kanal in Byte 10 und den Nutzdaten ab Byte 11 — die CCU hätte die
+  Info-Nachrichten nie dem Datenpunkt zuordnen können.
+- `Sensortyp` von `interface="config" list="1"` (Funk) auf `interface="eeprom"`
+  umgestellt — hs485d hätte dieses Byte nie geschrieben, jeder Kanal wäre
+  dauerhaft abgeschaltet geblieben.
+- `LEVEL_GET`-Frame (`#S`) und `<get>` ergänzt, damit die CCU den Wert abfragen
+  kann; HBWired beantwortet 'S' bereits.
+- `count_from_sysinfo` durch festes `count` ersetzt; das Kanalzahl-Byte an 0x17
+  und sein Padding entfallen, die Kanalkonfiguration beginnt jetzt bei 0x07.
+- `OWN_ADDRESS` an 0x03FC ergänzt (E2END−3 des 1-kB-EEPROMs im 328P).
+- Blockierendes `delay(2)` aus der ADC-Schleife entfernt — 8 ms je Messung
+  reichten aus, um auf SoftwareSerial RS485-Frames zu verlieren.
+- Rückgabewert von `sendInfoMessage()` wird ausgewertet; bei `BUS_BUSY` gilt der
+  Messwert nicht mehr als gesendet.
+- Sendelogik vom Messzyklus entkoppelt.
+- OFFSET mit Bias 127 gespeichert, damit −0,01 bar nicht mehr mit der Markierung
+  für gelöschtes EEPROM (0xFF) kollidiert.
+- EEPROM-Belegung durch `static_assert` abgesichert.
 
-### v0.02 (2024-04-06)
-- Fixed double channel initialization bug
-- Fixed EEPROM address mapping (address_step = 8)
-- Added offset support in code
-- Fixed send_min_interval logic (no early return breaking timing)
-- Changed send_min_interval to 16-bit (was 8-bit)
-- Improved ADC oversampling with delays
-- Added comprehensive debug output
+### v0.02 (06.04.2024)
+- Doppelte Kanal-Initialisierung behoben
+- EEPROM-Adressierung korrigiert (address_step = 8)
+- OFFSET im Code umgesetzt
+- Timing-Fehler bei send_min_interval behoben
+- send_min_interval auf 16 Bit erweitert (war 8 Bit)
+- Debug-Ausgabe erweitert
 
-### v0.01 (2024-04-02)
-- Initial version based on HB-UNI-Sen-PRESS
-- Basic pressure measurement
-- CCU integration via XML
+### v0.01 (02.04.2024)
+- Erste Fassung auf Basis von HB-UNI-Sen-PRESS
+- Grundlegende Druckmessung
+- CCU-Anbindung über XML

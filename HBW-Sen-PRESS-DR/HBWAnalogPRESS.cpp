@@ -1,10 +1,10 @@
 /*
  * HBWAnalogPRESS.cpp
  *
- * analog input channel for pressure sensors
- * Supports 0.5 MPa and 1.2 MPa hydraulic pressure sensors
+ * Analogeingang fuer Drucksensoren
+ * Unterstuetzt Hydraulik-Drucksensoren 0,5 MPa und 1,2 MPa
  *
- * Based on HBWired by Thorsten Pferdekaemper
+ * Basiert auf HBWired von Thorsten Pferdekaemper
  * www.loetmeister.de
  *
  */
@@ -15,7 +15,7 @@ HBWAnalogPRESS::HBWAnalogPRESS(uint8_t _pin, hbw_config_analog_press* _config) {
     pin = _pin;
     config = _config;
     lastActionTime = 0;
-    nextActionDelay = SAMPLE_INTERVAL;  // initial delay
+    nextActionDelay = SAMPLE_INTERVAL;  // Wartezeit bis zur ersten Messung
     adcSum = 0;
     sampleCount = 0;
     currentValue = 0;
@@ -25,30 +25,30 @@ HBWAnalogPRESS::HBWAnalogPRESS(uint8_t _pin, hbw_config_analog_press* _config) {
 
 
 void HBWAnalogPRESS::afterReadConfig() {
-    // Set default values if EEPROM is empty (0xFF)
+    // Vorgabewerte setzen, wenn das EEPROM leer ist (0xFF)
     if (config->update_interval == 0xFF)   config->update_interval = DEFAULT_UPDATE_INTERVAL;
-    if (config->send_delta_value == 0xFF)  config->send_delta_value = 10;   // 0.1 bar
-    if (config->send_max_interval == 0xFFFF) config->send_max_interval = 600;  // 10 minutes
+    if (config->send_delta_value == 0xFF)  config->send_delta_value = 10;   // 0,1 bar
+    if (config->send_max_interval == 0xFFFF) config->send_max_interval = 600;  // 10 Minuten
     if (config->send_min_interval == 0xFFFF) config->send_min_interval = 30;
-    if (config->offset == 0xFF)            config->offset = OFFSET_BIAS;   // 0.00 bar
+    if (config->offset == 0xFF)            config->offset = OFFSET_BIAS;   // 0,00 bar
 
-    // Sensor type validation: 0=Disabled, 1=1.2MPa, 2=0.5MPa (also catches 0xFF)
+    // Sensortyp pruefen: 0=aus, 1=1,2MPa, 2=0,5MPa (faengt auch 0xFF ab)
     if (config->pressure_sensor_type > 2)  config->pressure_sensor_type = 0;
 }
 
 
-/* standard public function - returns length of data array. Data array contains current channel reading */
+/* Standardfunktion - liefert die Laenge des Datenfelds; darin steht der aktuelle Messwert */
 uint8_t HBWAnalogPRESS::get(uint8_t* data) {
-    // MSB first
+    // hoeherwertiges Byte zuerst
     *data++ = (currentValue >> 8);
     *data = currentValue & 0xFF;
     return 2;
 }
 
 
-/* standard public function - called by main loop for every channel in sequential order */
+/* Standardfunktion - wird von der Hauptschleife fuer jeden Kanal der Reihe nach aufgerufen */
 void HBWAnalogPRESS::loop(HBWDevice* device, uint8_t channel) {
-    // Early exit if channel is disabled in CCU
+    // Abgeschaltete Kanaele sofort verlassen (Sensortyp = NICHT_BELEGT in der CCU)
     if (config->pressure_sensor_type == 0) {
         currentValue = 0;
         lastSendValue = 0;
@@ -57,7 +57,7 @@ void HBWAnalogPRESS::loop(HBWDevice* device, uint8_t channel) {
 
     uint32_t now = millis();
 
-    // === ADC reading, one sample per pass (never block the bus) ===
+    // === ADC einlesen, eine Messung je Durchlauf (blockiert den Bus nie) ===
     if (now - lastActionTime >= ((uint32_t)nextActionDelay * 1000)) {
         lastActionTime = now;
         nextActionDelay = SAMPLE_INTERVAL;
@@ -69,22 +69,22 @@ void HBWAnalogPRESS::loop(HBWDevice* device, uint8_t channel) {
             uint16_t avgADC = adcSum / MAX_SAMPLES;
             adcSum = 0;
             sampleCount = 0;
-            nextActionDelay = config->update_interval;  // "sleep" until next reading
+            nextActionDelay = config->update_interval;  // Pause bis zur naechsten Messreihe
 
-            // === Convert ADC to millivolts (ratiometric, VCC reference) ===
+            // === ADC-Wert in Millivolt umrechnen (ratiometrisch, VCC-Referenz) ===
             uint32_t voltage = ((uint32_t)avgADC * 5000UL) >> 10;
 
-            // === Calculate pressure: 0.5V = 0 bar, 4.5V = full scale ===
+            // === Druck berechnen: 0,5 V = 0 bar, 4,5 V = Endwert ===
             if (voltage <= SENSOR_OFFSET_MV) {
                 currentValue = 0;
             }
             else {
-                // full scale in 0.01 bar
+                // Endwert in 0,01 bar
                 uint16_t maxBar = (config->pressure_sensor_type == 1) ? 1200 : 500;
                 currentValue = (uint16_t)(((voltage - SENSOR_OFFSET_MV) * maxBar) / SENSOR_RANGE_MV);
             }
 
-            // === Apply calibration offset (stored with bias 127) ===
+            // === Kalibrier-Offset anwenden (mit Bias 127 gespeichert) ===
             int32_t corrected = (int32_t)currentValue + ((int16_t)config->offset - OFFSET_BIAS);
             if (corrected < 0)            currentValue = 0;
             else if (corrected > 0xFFFF)  currentValue = 0xFFFF;
@@ -98,8 +98,8 @@ void HBWAnalogPRESS::loop(HBWDevice* device, uint8_t channel) {
         }
     }
 
-    // === Send logic - independent of the measurement cycle ===
-    // do not send before min interval
+    // === Sendelogik - unabhaengig vom Messzyklus ===
+    // vor Ablauf des Mindestintervalls nicht senden
     if (config->send_min_interval && now - lastSentTime < (uint32_t)config->send_min_interval * 1000)
         return;
 
@@ -112,9 +112,9 @@ void HBWAnalogPRESS::loop(HBWDevice* device, uint8_t channel) {
         uint8_t data[2];
         get(data);
         if (device->sendInfoMessage(channel, sizeof(data), data) != HBWDevice::BUS_BUSY) {
-            lastSendValue = currentValue;   // store last value only on success
+            lastSendValue = currentValue;   // nur bei Erfolg als gesendet vermerken
         }
-        lastSentTime = now;   // if send failed, retry on send_max_interval or on next delta
+        lastSentTime = now;   // bei Fehlschlag greift send_max_interval oder das naechste Delta
 
 #ifdef DEBUG_OUTPUT
         hbwdebug(F("press-ch: "));  hbwdebug(channel);

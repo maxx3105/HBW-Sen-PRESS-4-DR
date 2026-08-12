@@ -30,9 +30,8 @@ Eigenes PCB vorhanden (KiCad-Schaltplan `HBW-Sen-PRESS-4_Platine1`), Rev 1.0:
 - **MC34063AD** Step-Down (24 V-Bus → 5 V)
 - Sensor-Anschluss J2 (8 Kanäle auf der Platine, im CRMB2-Gehäuse nur 4
   herausgeführt), RS485-Terminal J5, 24V-Terminal J4, ISP J6
-- Auf der Platine vorhandene Spannungsteiler (R1/R4/R6-R13) werden **nicht
-  benötigt** — Sensoren (0,5–4,5 V) gehen direkt an die ADC-Pins bei 5 V VCC.
-  → Bestückungsfrage siehe "Offene Fragen".
+- Die Platine wird noch überarbeitet; die Beschaltung der Sensoreingänge ist
+  daher hier bewusst nicht beschrieben.
 
 ---
 
@@ -135,14 +134,10 @@ Layout ist über drei `static_assert` im `.ino` an die XML gekoppelt — ein
 
 ## Offene Fragen / Nächste Schritte
 
-1. **Spannungsteiler-Bestückung:** Entscheidung noch offen zwischen
-   (a) unteren R überbrücken/0Ω, oberen frei lassen,
-   (b) PCB-Neuauflage ohne Teiler,
-   (c) wahlweise bestückbar für zukünftige höherspannige Sensoren.
-   Für eine belastbare Empfehlung fehlt der Schaltplan im Repo (nur als
-   KiCad-Datei außerhalb referenziert) — Teilertopologie ist unbekannt.
-   Wichtig: Ein Teiler muss gegen dieselbe 5-V-Schiene arbeiten, sonst geht
-   die Ratiometrie verloren.
+1. **Platine wird überarbeitet.** Solange das läuft, bleibt die Beschaltung der
+   Sensoreingänge hier bewusst undokumentiert — erst danach festhalten, ob die
+   Firmware einen Korrekturfaktor braucht oder das Signal unverändert am ADC
+   ankommt.
 2. **Am Bus bereits bestätigt** (08.08.2026, mit v0.03/`count="8"`): Announce
    korrekt, Discovery findet das Modul, Interrogation läuft komplett durch
    ('h'→50 01, 'v'→FW, 'n'→Serial, 'R'/'W' EEPROM), Gerät erscheint in der CCU
@@ -161,9 +156,8 @@ Layout ist über drei `static_assert` im `.ino` an die XML gekoppelt — ein
 3. **XML-Deployment:** Beim Austausch der XML auf einer CCU, die das Gerät
    schon kennt: XML löschen → Neustart → neue XML → Neustart → Posteingang →
    übernehmen. Sonst bleibt die alte Definition im Cache.
-4. **Spannungsteiler:** Der KiCad-Schaltplan liegt jetzt im Repo
-   (`HBW-Sen-PRESS-4_Platine1/` und `_Platine2/`) — die Teilertopologie lässt
-   sich damit klären, das war vorher der blockierende Punkt.
+4. **Sprache:** Repo ist durchgängig deutsch (README, BUGFIXES, CLAUDE.md,
+   Code-Kommentare). Debug-Ausgaben und Bezeichner bleiben englisch/technisch.
 
 ---
 
