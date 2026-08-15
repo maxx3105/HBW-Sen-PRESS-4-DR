@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <device eep_size="1024" version="15">
 <supported_types>
-	<type priority="2" id="HBW-Sen-PRESS" name="RS485 Pressure Sensor Module">
+	<type priority="2" id="HBW-Sen-PRESS-4-DR" name="RS485 Drucksensor-Modul 4-fach (Hutschiene)">
 		<parameter const_value="0x50" size="1" index="0"/><!--HMW_DEVICETYPE-->
 		<parameter const_value="1" size="1" index="1"/><!--HARDWARE_VERSION-->
-		<parameter const_value="0x0004" size="2" cond_op="GE" index="2"/><!--min FIRMWARE_VERSION-->
+		<parameter const_value="0x0005" size="2" cond_op="GE" index="2"/><!--min FIRMWARE_VERSION-->
 	</type>
 </supported_types>
 
-<paramset id="HBW-Sen-PRESS_dev_master" type="MASTER">
+<paramset id="HBW-Sen-PRESS-4-DR_dev_master" type="MASTER">
 	<parameter id="LOGGING_TIME">
 		<logical type="float" unit="s" default="5.0" max="25.5" min="0.1"/>
 		<physical size="1.0" type="integer" interface="eeprom">
@@ -27,6 +27,16 @@
 		<physical interface="eeprom" size="0.1" type="integer">
 			<address index="0x0006"/>
 		</physical>
+	</parameter>
+	<!-- Identify-LED: Bit 1 von 0x0006, invertiert gespeichert -> blankes EEPROM
+	     (0xFF) nach Werksreset = LED aus. NICHT auf 0x00FF legen, das kollidiert
+	     in diesem Layout mit dem LINK-Bereich. -->
+	<parameter id="IDENTIFY_LED">
+		<logical type="boolean" default="false"/>
+		<physical interface="eeprom" size="0.1" type="integer">
+			<address index="6.1"/>
+		</physical>
+		<conversion type="boolean_integer" invert="true"/>
 	</parameter>
 	<!-- Busadresse: letzte 4 EEPROM-Bytes, ATmega328P (E2END 0x3FF) -> 0x03FC -->
 	<parameter id="OWN_ADDRESS">

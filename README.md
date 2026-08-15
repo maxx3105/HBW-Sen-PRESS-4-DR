@@ -1,4 +1,4 @@
-# HBW-Sen-PRESS-DR
+# HBW-Sen-PRESS-4-DR
 
 HomeMatic-Wired-Drucksensormodul für Hutschienenmontage
 
@@ -15,12 +15,13 @@ Nicht belegte Kanäle werden in der CCU über `Sensortyp = NICHT_BELEGT` abgesch
 ## Aufbau des Repositories
 
 ```
-HBW-Sen-PRESS/
-├── HBW-Sen-PRESS-DR/            Arduino-Sketch (Ordnername muss zur .ino passen)
-│   ├── HBW-Sen-PRESS-DR.ino
+HBW-Sen-PRESS-4-DR/
+├── HBW-Sen-PRESS-4-DR/            Arduino-Sketch (Ordnername muss zur .ino passen)
+│   ├── HBW-Sen-PRESS-4-DR.ino
+│   ├── HBW-Sen-PRESS-4-DR_config_example.h   Pins, EepromPtr, USE_HARDWARE_SERIAL
 │   ├── HBWAnalogPRESS.h
 │   └── HBWAnalogPRESS.cpp
-├── hbw-sen-press-dr.xml         CCU-Gerätedefinition (hs485types)
+├── hbw-sen-press-4-dr.xml         CCU-Gerätedefinition (hs485types)
 ├── HBW-Sen-PRESS-4_Platine1/    KiCad-Projekt Hauptplatine (+ Gerber)
 ├── HBW-Sen-PRESS-4_Platine2/    KiCad-Projekt zweite Platine (+ Gerber)
 ├── BUGFIXES.md                  was in v0.01–v0.03 defekt war und warum
@@ -45,6 +46,8 @@ Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
 
 ### Merkmale der Platine
 - Hutschienenmontage
+- Identify-LED zum Auffinden im Verteiler (blinkt, solange `IDENTIFY_LED` in
+  den Geräteparametern gesetzt ist)
 - RS485-Busanschluss (A, B, GND, +24 V)
 - Schraubklemmen für die Sensoren
 - ISP-Programmierstecker
@@ -58,7 +61,13 @@ Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
 | A0–A3 | Analogeingänge der Drucksensoren |
 | D3 | RS485 TXEN |
 | D8 | Taster für Werksreset |
+| D12 | Identify-LED (optional, auskommentieren wenn nicht bestückt) |
 | D13 | Status-LED |
+
+Pins, `EepromPtr` und `USE_HARDWARE_SERIAL` stehen in
+`HBW-Sen-PRESS-4-DR_config_example.h`. Bei abweichender Hardware die Datei
+kopieren und die Kopie im Sketch einbinden — dann überschreibt sie eine neue
+Version aus GitHub nicht.
 
 ## Funktionsumfang
 
@@ -107,26 +116,28 @@ git clone https://github.com/ThorstenPferdekaemper/HBWired
 
 ### 2. Übersetzen und flashen
 
-Der Sketch liegt im Unterordner `HBW-Sen-PRESS-DR/` (der Ordnername muss dem
+Der Sketch liegt im Unterordner `HBW-Sen-PRESS-4-DR/` (der Ordnername muss dem
 `.ino`-Namen entsprechen).
 
-- `HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` in der Arduino-IDE öffnen
+- `HBW-Sen-PRESS-4-DR/HBW-Sen-PRESS-4-DR.ino` in der Arduino-IDE öffnen
 - Board: **Arduino Nano** (ATmega328P)
-- Für den Produktivbetrieb: `#define USE_HARDWARE_SERIAL` aktivieren
+- Betriebsart im Konfig-Header wählen: `USE_HARDWARE_SERIAL` gesetzt =
+  Produktivbetrieb (RS485 über die Hardware-UART, keine Debug-Ausgabe),
+  auskommentiert = Debug über USB und RS485 über SoftwareSerial
 - Flashen über ISP oder Bootloader
 
 Oder aus dem Projektverzeichnis heraus:
 
 ```
-arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 HBW-Sen-PRESS-DR
-arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 --upload --programmer usbasp HBW-Sen-PRESS-DR
+arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 HBW-Sen-PRESS-4-DR
+arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 --upload --programmer usbasp HBW-Sen-PRESS-4-DR
 ```
 
 Hinweis: Ist die EESAVE-Fuse nicht gesetzt, löscht jeder ISP-Flash das EEPROM —
 und damit die Busadresse.
 
 ### 3. CCU/RaspberryMatic einrichten
-1. `hbw-sen-press-dr.xml` auf die CCU kopieren
+1. `hbw-sen-press-4-dr.xml` auf die CCU kopieren
 2. Gerätedefinition einbinden (Addon bzw. FHEM)
 3. Gerät an den RS485-Bus anschließen
 4. Anlernen und aus dem Posteingang übernehmen
@@ -140,7 +151,7 @@ und damit die Busadresse.
 0x00      : Gerätetyp (0x50)
 0x01      : Logging-Zeit
 0x02-0x05 : Zentralen-Adresse
-0x06      : Direct-Link-Flag
+0x06      : Bit 0 Direct-Link-Flag, Bit 1 Identify-LED (invertiert: 1 = aus)
 0x07      : Kanal 1, Konfiguration (8 Byte)
   +0: send_delta_value
   +1: offset (Bias 127: 0 = −1,27 bar, 127 = 0,00 bar, 254 = +1,27 bar)
@@ -153,7 +164,7 @@ und damit die Busadresse.
 ```
 
 Die Belegung ist über drei `static_assert` in
-`HBW-Sen-PRESS-DR/HBW-Sen-PRESS-DR.ino` an die XML gekoppelt — Strukturgröße,
+`HBW-Sen-PRESS-4-DR/HBW-Sen-PRESS-4-DR.ino` an die XML gekoppelt — Strukturgröße,
 Startoffset der Kanäle und der Abstand zu `OWN_ADDRESS` müssen passen,
 sonst bricht der Build.
 
@@ -191,6 +202,16 @@ http://creativecommons.org/licenses/by-nc-sa/3.0/at/
 - jp112sdl – ursprüngliches Konzept HB-UNI-Sen-PRESS
 
 ## Änderungsverlauf
+
+### v0.05
+- Gerät in HBW-Sen-PRESS-4-DR umbenannt (Typ-Byte bleibt 0x50; wegen des
+  Namenswechsels in der CCU löschen und neu anlernen)
+- Pinbelegung, `EepromPtr` und `USE_HARDWARE_SERIAL` in einen Konfig-Header
+  ausgelagert
+- Identify-LED ergänzt
+
+### v0.04
+- Kanalzahl auf 4 festgelegt (A0–A3)
 
 ### v0.01 (02.04.2024)
 - Erste Fassung auf Basis von HB-UNI-Sen-PRESS

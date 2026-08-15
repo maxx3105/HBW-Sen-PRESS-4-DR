@@ -1,10 +1,10 @@
 //*******************************************************************
 //
-// HBW-Sen-PRESS-DR
+// HBW-Sen-PRESS-4-DR
 //
 // Homematic Wired Homebrew Hardware
 // ATmega328P als Homematic-Device
-// Drucksensormodul fuer Hutschienenmontage
+// Drucksensormodul 4-fach fuer Hutschienenmontage
 //
 // Basiert auf HBWired von Thorsten Pferdekaemper & Dirk Hoffmann
 // (thorsten@pferdekaemper.com, hoffmann@vmd-jena.de)
@@ -27,12 +27,17 @@
 //       - OFFSET mit Bias 127 statt 0xFF-Sonderfall
 //       - feste Kanalzahl 8, count_from_sysinfo entfaellt (Wired kennt es nicht)
 // v0.04 - Kanalzahl 8 -> 4 (CRMB2-Gehaeuse fuehrt nur 4 Sensoren heraus)
+// v0.05 - Geraet in HBW-Sen-PRESS-4-DR umbenannt
+//       - Pinbelegung/EepromPtr in <Name>_config_example.h ausgelagert
+//       - Identify-LED ergaenzt (blinkt, solange IDENTIFY_LED gesetzt ist)
 //
 //*******************************************************************
 
 #define HARDWARE_VERSION 0x01
-#define FIRMWARE_VERSION 0x0004
-#define HMW_DEVICETYPE 0x50  // Device ID (hbw-sen-press-dr.xml auf der CCU installieren)
+#define FIRMWARE_VERSION 0x0005
+#define HMW_DEVICETYPE 0x50  // Device ID (hbw-sen-press-4-dr.xml auf der CCU installieren)
+
+#define IDENTIFY_LED_INTERVAL 600   // Blinkintervall der Identify-LED in ms
 
 #define NUMBER_OF_CHAN 4   // Drucksensor-Kanaele, belegt A0..A3.
                            // MUSS mit count="4" in der XML uebereinstimmen.
@@ -46,32 +51,16 @@
                             * braeuchten deshalb einen zweiten Geraetetyp mit eigenem
                             * Typ-Byte, wie bei HBW-LC-RGBWW-3/-6. */
 
-//#define USE_HARDWARE_SERIAL   // RS485 ueber die Hardware-UART (Produktivbetrieb).
-                                // Schaltet die Debug-Ausgabe ab - der 328P hat nur
-                                // einen UART, entweder Bus oder Debug.
-/* "HBW_DEBUG" in 'HBWired.h' auskommentieren, um den Debug-Code zu entfernen.
- * Es wirkt zugleich als Hauptschalter fuer die hbwdebug()-Funktionen. */
-
+// HBWired-Protokoll und Module
 #include <Arduino.h>
 #include <HBWired.h>
 #include "HBWAnalogPRESS.h"
+#include <HBW_eeprom.h>
 
-// Pinbelegung
-#ifdef USE_HARDWARE_SERIAL
-  #define RS485_TXEN 2     // Sendefreigabe fuer den MAX485
-  #define BUTTON 8         // Taster fuer Werksreset
-#else
-  #define RS485_RXD 4      // SoftwareSerial RX
-  #define RS485_TXD 2      // SoftwareSerial TX
-  #define RS485_TXEN 3     // Sendefreigabe fuer den MAX485
-  #define BUTTON 8         // Button for factory reset
-  #define DEBUG_OUTPUT
-  #include "FreeRam.h"
-  #include <HBWSoftwareSerial.h>
-  HBWSoftwareSerial rs485(RS485_RXD, RS485_TXD); // RX, TX
-#endif
+// Pinbelegung, EepromPtr und USE_HARDWARE_SERIAL stehen hier. Bei abweichender
+// Hardware die Datei kopieren und die Kopie stattdessen einbinden.
+#include "HBW-Sen-PRESS-4-DR_config_example.h"
 
-#define LED LED_BUILTIN    // Status-LED
 
 // Konfigurationsstruktur im EEPROM
 // HBWDevice liest sie ab EEPROM-Adresse 0x01 (HBWired.cpp: readConfig)
@@ -79,7 +68,8 @@ struct hbw_config {
   uint8_t logging_time;             // 0x01
   uint32_t central_address;         // 0x02-0x05
   uint8_t direct_link_deactivate:1; // 0x06:0
-  uint8_t dummy1:7;                 // 0x06:1-7
+  uint8_t n_identify_led:1;         // 0x06:1  0=Identify-LED an (blinkt), 1=aus
+  uint8_t              :6;          // 0x06:2-7
 
   // Die Kanalkonfiguration beginnt bei 0x07 (XML: address_start="0x07" address_step="8")
   hbw_config_analog_press analogPressConfigs[NUMBER_OF_CHAN];
@@ -95,20 +85,46 @@ static_assert(offsetof(hbw_config, analogPressConfigs) == 6,
 static_assert(0x01 + sizeof(hbw_config) <= 0x03FC,
               "Config-Bereich kollidiert mit OWN_ADDRESS (E2END-3)");
 
-// Zuordnung der Sensoreingaenge (A4..A7 sind auf der Platine vorhanden,
-// im CRMB2-Gehaeuse aber nicht herausgefuehrt)
-uint8_t SENSOR_PINS[] = {A0, A1, A2, A3, A4, A5, A6, A7};
+// Zuordnung der Sensoreingaenge (Reihenfolge = Kanal 1..NUMBER_OF_CHAN),
+// steht im Konfig-Header
+uint8_t SENSOR_PINS[] = SENSOR_PIN_LIST;
 
-#if NUMBER_OF_CHAN > 8
-  #error "ATmega328P hat nur 8 ADC-Eingaenge (A0..A7)"
-#endif
+static_assert(sizeof(SENSOR_PINS) >= NUMBER_OF_CHAN,
+              "SENSOR_PIN_LIST im Konfig-Header hat weniger Pins als NUMBER_OF_CHAN");
 
 // Geraete- und Kanalobjekte
 HBWDevice* device = NULL;
 HBWAnalogPRESS* channels[NUMBER_OF_CHAN];
 
 
+#ifdef IDENTIFY_LED
+// Identify-LED, um das Geraet im Verteiler zu finden. Blinkt, solange IDENTIFY_LED
+// in der Geraetekonfiguration gesetzt ist. 'n_identify_led' wird invertiert
+// gespeichert (siehe XML: boolean_integer invert="true"), damit die LED bei
+// blankem EEPROM (0xFF) nach einem Werksreset aus bleibt.
+void identifyLedLoop()
+{
+  static uint32_t lastTime = 0;
+  uint32_t now = millis();
+
+  if (hbwconfig.n_identify_led) {
+    digitalWrite(IDENTIFY_LED, LOW);
+    lastTime = now;
+  }
+  else if (now - lastTime >= IDENTIFY_LED_INTERVAL) {
+    digitalWrite(IDENTIFY_LED, !digitalRead(IDENTIFY_LED));
+    lastTime = now;
+  }
+};
+#endif
+
+
 void setup() {
+#ifdef IDENTIFY_LED
+  pinMode(IDENTIFY_LED, OUTPUT);
+  digitalWrite(IDENTIFY_LED, LOW);
+#endif
+
   // Kanalobjekte anlegen
   for (uint8_t i = 0; i < NUMBER_OF_CHAN; i++) {
     channels[i] = new HBWAnalogPRESS(SENSOR_PINS[i], &hbwconfig.analogPressConfigs[i]);
@@ -141,7 +157,7 @@ void setup() {
   device->setConfigPins(BUTTON, LED);
 
   // Startmeldung
-  hbwdebug(F("HBW-Sen-PRESS-DR v"));
+  hbwdebug(F("HBW-Sen-PRESS-4-DR v"));
   hbwdebug(FIRMWARE_VERSION);
   hbwdebug(F("\nFree RAM: "));
   hbwdebug(freeRam());
@@ -169,4 +185,8 @@ void setup() {
 
 void loop() {
   device->loop();
+
+#ifdef IDENTIFY_LED
+  identifyLedLoop();
+#endif
 }

@@ -1,4 +1,4 @@
-# CLAUDE.md — HBW-Sen-PRESS-DR
+# CLAUDE.md — HBW-Sen-PRESS-4-DR
 
 Kontext-Übergabedatei für zukünftige Sessions mit Claude. Kompakter Stand, kein Tutorial.
 
@@ -6,7 +6,7 @@ Kontext-Übergabedatei für zukünftige Sessions mit Claude. Kompakter Stand, ke
 
 ## Projekt
 
-Umbau von **HB-UNI-Sen-PRESS** (jp112sdl, Funk/AskSinPP) zu **HBW-Sen-PRESS-DR**
+Umbau von **HB-UNI-Sen-PRESS** (jp112sdl, Funk/AskSinPP) zu **HBW-Sen-PRESS-4-DR**
 (HomeMatic Wired / RS485, Hutschienenmontage). Basis-Framework:
 [ThorstenPferdekaemper/HBWired](https://github.com/ThorstenPferdekaemper/HBWired).
 
@@ -35,27 +35,28 @@ Eigenes PCB vorhanden (KiCad-Schaltplan `HBW-Sen-PRESS-4_Platine1`), Rev 1.0:
 
 ---
 
-## Aktueller Software-Stand (v0.04)
+## Aktueller Software-Stand (v0.05)
 
 Struktur (Sketch liegt im gleichnamigen Unterordner, damit arduino-cli und
 Arduino-IDE ihn direkt bauen — `files.zip` konserviert den v0.02-Stand):
 
 ```
 HBW-UNI-Sen-PRESS/
-├── HBW-Sen-PRESS-DR/          <- Sketch-Ordner
-│   ├── HBW-Sen-PRESS-DR.ino
+├── HBW-Sen-PRESS-4-DR/          <- Sketch-Ordner
+│   ├── HBW-Sen-PRESS-4-DR.ino
+│   ├── HBW-Sen-PRESS-4-DR_config_example.h  <- Pins, EepromPtr, USE_HARDWARE_SERIAL
 │   ├── HBWAnalogPRESS.h
 │   └── HBWAnalogPRESS.cpp
-├── hbw-sen-press-dr.xml       <- CCU-Gerätedefinition
+├── hbw-sen-press-4-dr.xml       <- CCU-Gerätedefinition
 ├── README.md, BUGFIXES.md, CLAUDE.md
 └── files.zip                  <- Archiv v0.02
 ```
 
 Bauen:
-`arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 HBW-Sen-PRESS-DR`
+`arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 HBW-Sen-PRESS-4-DR`
 
 Beide Build-Varianten kompilieren (arduino:avr:nano, ATmega328P, 4 Kanaele):
-Debug 13032 B / 453 B RAM.
+Produktiv 11476 B / 338 B RAM, Debug 13146 B / 453 B RAM.
 
 ### v0.03: XML von Funk- auf Wired-Syntax umgebaut
 
@@ -83,8 +84,22 @@ Ergänzt: `LEVEL_GET` (`#S`) + `<get>`, `OWN_ADDRESS` an 0x03FC.
 
 ### v0.04
 
-Kanalzahl auf **4** festgelegt (A0..A3), Firmware-Version `0x0004`,
-XML `count="4"` + `cond_op="GE" 0x0004`.
+Kanalzahl auf **4** festgelegt (A0..A3), XML `count="4"`.
+
+### v0.05
+
+- Gerät heißt jetzt **HBW-Sen-PRESS-4-DR** (Sketch-Ordner, `.ino`, XML-Datei
+  und `<type id=…>`). Typ-Byte bleibt `0x50`. Wegen des Namenswechsels muss das
+  Gerät in der CCU gelöscht und neu angelernt werden.
+- Pinbelegung, `EepromPtr` und `USE_HARDWARE_SERIAL` in
+  `HBW-Sen-PRESS-4-DR_config_example.h` ausgelagert — Struktur wie beim
+  HBW-1W-T10. Damit ist auch `EepromPtr` erstmals sauber definiert; vorher fehlte
+  die Definition im Sketch komplett (die Lib deklariert sie nur `extern`).
+- **Identify-LED** ergänzt: MASTER-Parameter `IDENTIFY_LED` auf **Bit 1 von
+  EEPROM 0x06**, Pin per Vorgabe D12, blinkt alle 600 ms. Invertiert gespeichert
+  (`n_identify_led`), damit blankes EEPROM nach Werksreset = LED aus.
+  Nicht auf 0x00FF legen — kollidiert in diesem Layout mit dem LINK-Bereich.
+- Firmware-Version `0x0005`, XML `cond_op="GE" 0x0005`.
 
 ### EEPROM-Layout
 
@@ -100,6 +115,9 @@ landet also auf 0x07. Kanal-Config 8 Byte je Kanal ab **0x07**
 +6: update_interval      (1 Byte, s)
 +7: pressure_sensor_type (1 Byte: 0=aus, 1=1.2MPa, 2=0.5MPa)
 0x3FC-0x3FF: OWN_ADDRESS (E2END-3 beim 328P)
+
+0x06 Bit 0: direct_link_deactivate
+0x06 Bit 1: n_identify_led (invertiert: 1 = LED aus)
 ```
 
 Layout ist über drei `static_assert` im `.ino` an die XML gekoppelt — ein
@@ -126,7 +144,7 @@ Layout ist über drei `static_assert` im `.ino` an die XML gekoppelt — ein
   werden. Mehr Kanäle bräuchten einen zweiten Gerätetyp mit eigenem Typ-Byte
   (Muster: `hbw_lc_rgbww_3.xml` 0xD2 / `_6.xml` 0xD1). Frei wäre ab 0x53
   (0x51/0x52 sind HMW-WSE-SM bzw. HMW-WSTH-SM).
-- **Firmware-Version:** Code `0x0004`, XML verlangt `GE 0x0004`. v0.01/v0.02
+- **Firmware-Version:** Code `0x0005`, XML verlangt `GE 0x0005`. v0.01/v0.02
   waren wegen der XML-Fehler ohnehin nie lauffähig.
 - **Debug-Plattform:** Mit der 328P-Festlegung entfällt das 644P-Testboard.
   Debug läuft über den vorhandenen Software-Serial-Modus (RS485 auf

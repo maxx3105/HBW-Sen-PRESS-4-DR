@@ -1,4 +1,4 @@
-# Bug Fixes und Verbesserungen - HBW-Sen-PRESS-DR
+# Bug Fixes und Verbesserungen - HBW-Sen-PRESS-4-DR
 
 ## v0.03 → v0.04: Kanalzahl 4, count_from_sysinfo endgültig ausgeschlossen
 
@@ -524,7 +524,7 @@ for(uint8_t i = 0; i < 4; i++) {
 
 ✅ `HBWAnalogPRESS.h` - Header mit korrekten Kommentaren
 ✅ `HBWAnalogPRESS.cpp` - Alle Bugfixes implementiert
-✅ `HBW-Sen-PRESS-DR.ino` - Sauberer Setup, keine doppelte Init
+✅ `HBW-Sen-PRESS-4-DR.ino` - Sauberer Setup, keine doppelte Init
 ✅ `HBW-Sen-PRESS.xml` - Korrigiertes Address-Mapping
 ✅ `README.md` - Vollständige Dokumentation
 ✅ `BUGFIXES.md` - Diese Datei
