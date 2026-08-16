@@ -20,8 +20,8 @@ EEPROMClass* EepromPtr = &EEPROM;  // internes EEPROM
 // Pins
 #ifdef USE_HARDWARE_SERIAL
   #define RS485_TXEN 2           // Sendefreigabe fuer den MAX487
-  #define BUTTON 8               // Taster fuer Werksreset
-  #define LED LED_BUILTIN        // Status-LED
+  #define BUTTON A6              // Taster fuer Werksreset
+  #define LED 13                 // Status-LED
   #define IDENTIFY_LED 12        // PB4/D12 - Identify-LED, auskommentieren wenn nicht bestueckt
 
   // Analogeingaenge der Drucksensoren, Reihenfolge = Kanal 1..NUMBER_OF_CHAN
@@ -32,7 +32,7 @@ EEPROMClass* EepromPtr = &EEPROM;  // internes EEPROM
   #define RS485_TXD 2            // SoftwareSerial TX
   #define RS485_TXEN 3           // Sendefreigabe fuer den MAX487
   #define BUTTON 8               // Taster fuer Werksreset
-  #define LED LED_BUILTIN        // Status-LED
+  #define LED 13                 // Status-LED
   #define IDENTIFY_LED 12        // PB4/D12 - Identify-LED, auskommentieren wenn nicht bestueckt
 
   #define SENSOR_PIN_LIST {A0, A1, A2, A3}
