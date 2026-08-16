@@ -60,7 +60,7 @@ Beide liefern ein Analogsignal von **0,5 V bis 4,5 V**:
 |-----|----------|
 | A0–A3 | Analogeingänge der Drucksensoren |
 | D3 | RS485 TXEN |
-| D8 | Taster für Werksreset |
+| A6 | Taster für Werksreset |
 | D12 | Identify-LED (optional, auskommentieren wenn nicht bestückt) |
 | D13 | Status-LED |
 
